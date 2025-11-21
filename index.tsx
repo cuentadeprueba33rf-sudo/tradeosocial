@@ -140,6 +140,7 @@ const CreatePostModal = ({ setShowModal, user }) => {
 
 // FIX: Define an interface for the post data to improve type safety.
 interface PostData {
+    id: string;
     authorPhotoURL: string;
     authorName: string;
     game: string;
@@ -178,18 +179,24 @@ const Post: React.FC<{ post: PostData }> = ({ post }) => (
 const TradeApp = ({ user }) => {
     const [showModal, setShowModal] = useState(false);
     const [showLogout, setShowLogout] = useState(false);
-    const [posts, setPosts] = useState([]);
+    const [posts, setPosts] = useState<PostData[]>([]);
     const [filter, setFilter] = useState('All');
 
     useEffect(() => {
         const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const postsData = [];
-            querySnapshot.forEach((doc) => {
-                postsData.push({ id: doc.id, ...doc.data() });
-            });
-            setPosts(postsData);
-        });
+        const unsubscribe = onSnapshot(q, 
+            (querySnapshot) => {
+                const postsData: PostData[] = [];
+                querySnapshot.forEach((doc) => {
+                    postsData.push({ id: doc.id, ...doc.data() } as PostData);
+                });
+                setPosts(postsData);
+            },
+            (error) => {
+                console.error("Error fetching real-time posts: ", error);
+                alert("Could not fetch posts. Check the console for permission errors. You may need to update your Firestore security rules.");
+            }
+        );
 
         return () => unsubscribe();
     }, []);
@@ -232,7 +239,7 @@ const TradeApp = ({ user }) => {
 
 
 const App = () => {
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -244,7 +251,7 @@ const App = () => {
     }, []);
 
     if (loading) {
-        return <div>Loading...</div>; // Or a nice spinner component
+        return <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh'}}>Loading...</div>;
     }
 
     return user ? <TradeApp user={user} /> : <LoginPage />;
@@ -252,5 +259,5 @@ const App = () => {
 
 
 const container = document.getElementById('root');
-const root = createRoot(container);
+const root = createRoot(container!);
 root.render(<App />);
